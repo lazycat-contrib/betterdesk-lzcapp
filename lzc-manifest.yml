@@ -1,0 +1,131 @@
+application:
+  subdomain: betterdesk
+  multi_instance: false
+  # Web 控制台（HTTP，经懒猫网关免密注入 + 反代）
+  upstreams:
+    - location: /
+      # 上游容器内 Web 控制台监听 5000
+      backend: http://betterdesk:5000/
+  # RustDesk 客户端直连端口（L4 直通，无 HTTP 层；客户端需自行鉴权/加密，上游 ENCRYPTED_ONLY=1）
+  ingress:
+    - protocol: tcp
+      port: 21115
+      service: betterdesk
+      description: "RustDesk NAT type test"
+    - protocol: tcp
+      port: 21116
+      service: betterdesk
+      description: "RustDesk signal (TCP)"
+    - protocol: udp
+      port: 21116
+      service: betterdesk
+      description: "RustDesk signal (UDP)"
+    - protocol: tcp
+      port: 21117
+      service: betterdesk
+      description: "RustDesk relay"
+    - protocol: tcp
+      port: 21118
+      service: betterdesk
+      description: "RustDesk WebSocket signal"
+    - protocol: tcp
+      port: 21119
+      service: betterdesk
+      description: "RustDesk WebSocket relay"
+    - protocol: tcp
+      port: 21121
+      service: betterdesk
+      description: "RustDesk client HTTP API"
+  # 自带账号体系（Node.js 控制台，管理员账号+密码登录）
+  # 管理员凭据由安装参数提供（首次启动种子），登录页 /login 自动填充实现免密
+  public_path:
+    - /
+  injects:
+    - id: login-autofill
+      when:
+        - /login
+      do:
+        - src: builtin://simple-inject-password
+          params:
+            user: "{{ .U.admin_user }}"
+            password: "{{ .U.admin_password }}"
+
+services:
+  betterdesk:
+    # upstream: ghcr.io/unitronix/betterdesk:3.5.200
+    # 镜像模式（delivery.mode=mirror）发布到喵喵商店时，Action 会把此行改写为
+    # ghcr.1ms.run/unitronix/betterdesk:<tag> 并要求 digest 匹配
+    image: ghcr.1ms.run/unitronix/betterdesk:3.5.200
+    # 上游镜像内置 supervisor 以 betterdesk(10001) 运行两个子进程，
+    # 但入口脚本需要 chown 数据卷并 su-exec，以 root 入场最稳
+    user: root
+    environment:
+      - NODE_ENV=production
+      # 面板处于懒猫网关反代之后
+      - TRUST_PROXY=1
+      - PORT=5000
+      - HOST=0.0.0.0
+      - API_HOST=0.0.0.0
+      - API_ENABLED=false
+      - ENCRYPTED_ONLY=1
+      - SERVER_BACKEND=betterdesk
+      - HBBS_API_URL=http://127.0.0.1:21121/api
+      - BETTERDESK_API_URL=http://127.0.0.1:21121/api
+      - RUSTDESK_PATH=/opt/rustdesk
+      - DATA_DIR=/app/data
+      - DB_PATH=/opt/rustdesk/db_v2.sqlite3
+      - PUB_KEY_PATH=/opt/rustdesk/id_ed25519.pub
+      - API_KEY_PATH=/opt/rustdesk/.api_key
+      - AUTH_DB_PATH=/app/data/auth.db
+      - DOCKER=true
+      # SQLite 单机模式（上游 quick-start 默认）
+      - DB_TYPE=sqlite
+      # 会话签名密钥：稳定派生，重建容器不失效
+      - SESSION_SECRET={{ stable_secret "betterdesk_session" }}
+      # 首次启动种子管理员（仅首启生效，之后改密不影响）
+      - DEFAULT_ADMIN_USERNAME={{ .U.admin_user }}
+      - DEFAULT_ADMIN_PASSWORD={{ .U.admin_password }}
+      - ADMIN_PASSWORD={{ .U.admin_password }}
+      - INIT_ADMIN_USER={{ .U.admin_user }}
+      - INIT_ADMIN_PASS={{ .U.admin_password }}
+      # 中继服务器地址：容器内无法自动探测公网地址，显式指向本应用对外域名，
+      # RustDesk 客户端按此地址回连中继
+      - RELAY_SERVERS={{.S.AppDomain}}
+      # 客户端直连的公网入口是懒猫网关 ingress，信号服务在容器内监听原端口
+      - SIGNAL_RATE_LIMIT_PER_IP=0
+      - NTP_SERVERS=pool.ntp.org,time.google.com,time.cloudflare.com
+      # 应用内下载官方客户端（可选功能）走 GitHub，需放行
+      - BETTERDESK_CLIENT_REPO=UNITRONIX/BetterDesk-Client
+    healthcheck:
+      # 镜像自带 HEALTHCHECK 同款探测，镜像内有 curl
+      test:
+        - CMD-SHELL
+        - curl -sf http://localhost:21121/api/health && curl -sf http://localhost:5000/health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    binds:
+      # 服务端数据：SQLite 设备库、id_ed25519 密钥对、.api_key
+      - /lzcapp/var/server:/opt/rustdesk
+      # 控制台数据：auth.db、会话、上传等
+      - /lzcapp/var/console:/app/data
+    mem_limit: 2g
+
+usage: |
+  BetterDesk 是开源自托管的远程桌面平台：RustDesk 协议服务端（Go 净室实现）+ Web 管理控制台，
+  兼容标准 RustDesk 客户端。管理员在网页控制台管理设备、用户、地址簿与聊天。
+
+  【首次使用】
+  1. 打开应用，管理员账号与密码在安装时已自动生成（密码可在安装参数里查看），登录页会自动填充。
+  2. 在控制台「设备」页确认服务端 ID 与公钥（Key）。
+  3. 在需要被控的电脑上安装 RustDesk 客户端：ID 服务器填 本设备域名，
+     中继服务器 同样填 本设备域名，Key 填控制台显示的公钥，然后用 ID + 密码连接。
+
+  【客户端连接端口】
+  应用已直通 RustDesk 所需端口：TCP 21115/21116/21117/21118/21119/21121 与 UDP 21116。
+  外网客户端直接连 设备域名:对应端口；局域网内可用 主机名:端口。
+
+  【说明】
+  - 服务端与控制台数据（SQLite、密钥、会话）持久化在应用数据目录，卸载重装会保留。
+  - 上游为 AGPL-3.0 开源：https://github.com/UNITRONIX/BetterDesk

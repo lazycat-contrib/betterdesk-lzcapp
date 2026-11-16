@@ -1,0 +1,42 @@
+version: 1
+
+project:
+  root: .
+  build_config: lzc-build.yml
+  package_file: package.yml
+  output: .lazycat-build/betterdesk.lpk
+  target_arch: amd64
+
+update:
+  strategy: publish
+  allow_downgrade: false
+  version_source:
+    type: image
+    image: betterdesk
+
+build:
+  toolchains: []
+  run_buildscript: false
+
+images:
+  # 主服务：BetterDesk all-in-one（ghcr）。上游发 SemVer tag（无 v 前缀），
+  # 排除 latest/dev/sha-*/3.x 大版本浮动 tag，只跟随精确版本
+  - id: betterdesk
+    target: service
+    service: betterdesk
+    source: ghcr.io/unitronix/betterdesk
+    channel: stable
+    tag_regex: '^[0-9]+\.[0-9]+\.[0-9]+$'
+    delivery:
+      # 喵喵商店镜像模式：经 ghcr.1ms.run 加速直连上游，要求 digest 与上游一致
+      mode: mirror
+      require_digest_match: true
+
+stores:
+  private:
+    enabled: true
+    skip_if_version_exists: true
+    name: BetterDesk
+    summary: "BetterDesk 懒猫微服打包：开源自托管远程桌面（RustDesk 协议服务端 + Web 管理控制台，AGPL-3.0）。"
+  official:
+    enabled: false

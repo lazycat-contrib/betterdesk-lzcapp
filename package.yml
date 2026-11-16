@@ -1,0 +1,18 @@
+package: community.lazycat.app.betterdesk
+version: 3.5.200
+name: BetterDesk
+description: "BetterDesk Console: open-source self-hosted remote desktop platform. A clean-room RustDesk-protocol server (Go) plus a web console (Node.js) to manage devices, users, address book and chats. Works with the standard RustDesk client. AGPL-3.0."
+min_os_version: 1.5.0
+homepage: https://github.com/UNITRONIX/BetterDesk
+author: UNITRONIX
+license: AGPL-3.0
+locales:
+  zh:
+    name: "BetterDesk"
+    description: "开源自托管的远程桌面平台：BetterDesk 服务端（Go，RustDesk 协议的净室实现）+ Web 管理控制台（Node.js），统一管理设备、用户、地址簿与聊天。兼容标准 RustDesk 客户端。AGPL-3.0 开源。"
+  zh_CN:
+    name: "BetterDesk"
+    description: "开源自托管的远程桌面平台：BetterDesk 服务端（Go，RustDesk 协议的净室实现）+ Web 管理控制台（Node.js），统一管理设备、用户、地址簿与聊天。兼容标准 RustDesk 客户端。AGPL-3.0 开源。"
+  en:
+    name: "BetterDesk"
+    description: "BetterDesk Console: open-source self-hosted remote desktop platform. A clean-room RustDesk-protocol server (Go) plus a web console (Node.js) to manage devices, users, address book and chats. Works with the standard RustDesk client. AGPL-3.0."
