@@ -49,13 +49,12 @@ application:
           params:
             user: "{{ .U.admin_user }}"
             password: "{{ .U.admin_password }}"
-
 services:
   betterdesk:
-    # upstream: ghcr.io/unitronix/betterdesk:3.5.200
+    # upstream: ghcr.io/unitronix/betterdesk:3.5.262
     # 镜像模式（delivery.mode=mirror）发布到喵喵商店时，Action 会把此行改写为
     # ghcr.1ms.run/unitronix/betterdesk:<tag> 并要求 digest 匹配
-    image: ghcr.1ms.run/unitronix/betterdesk:3.5.200
+    image: ghcr.1ms.run/unitronix/betterdesk:3.5.262
     # 上游镜像内置 supervisor 以 betterdesk(10001) 运行两个子进程，
     # 但入口脚本需要 chown 数据卷并 su-exec，以 root 入场最稳
     user: root
@@ -111,7 +110,6 @@ services:
       # 控制台数据：auth.db、会话、上传等
       - /lzcapp/var/console:/app/data
     mem_limit: 2g
-
 usage: |
   BetterDesk 是开源自托管的远程桌面平台：RustDesk 协议服务端（Go 净室实现）+ Web 管理控制台，
   兼容标准 RustDesk 客户端。管理员在网页控制台管理设备、用户、地址簿与聊天。

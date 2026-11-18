@@ -1,5 +1,5 @@
 package: community.lazycat.app.betterdesk
-version: 3.5.200
+version: 3.5.262
 name: BetterDesk
 description: "BetterDesk Console: open-source self-hosted remote desktop platform. A clean-room RustDesk-protocol server (Go) plus a web console (Node.js) to manage devices, users, address book and chats. Works with the standard RustDesk client. AGPL-3.0."
 min_os_version: 1.5.0
